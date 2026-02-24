@@ -15,7 +15,6 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebViewClient
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.webkit.WebSettingsCompat
@@ -72,8 +71,7 @@ import ai.openclaw.android.MainViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RootScreen(viewModel: MainViewModel) {
-  var showChatSheet by remember { mutableStateOf(false) }
-  var showGatewayPanel by remember { mutableStateOf(false) }
+  var sheet by remember { mutableStateOf<Sheet?>(null) }
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val safeOverlayInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
   val context = LocalContext.current
@@ -211,10 +209,7 @@ fun RootScreen(viewModel: MainViewModel) {
       gateway = gatewayState,
       voiceEnabled = voiceEnabled,
       activity = activity,
-      onClick = {
-        showChatSheet = false
-        showGatewayPanel = true
-      },
+      onClick = { sheet = Sheet.Settings },
       modifier = Modifier.windowInsetsPadding(safeOverlayInsets).padding(start = 12.dp, top = 12.dp),
     )
   }
@@ -226,10 +221,7 @@ fun RootScreen(viewModel: MainViewModel) {
       horizontalAlignment = Alignment.End,
     ) {
       OverlayIconButton(
-        onClick = {
-          showGatewayPanel = false
-          showChatSheet = true
-        },
+        onClick = { sheet = Sheet.Chat },
         icon = { Icon(Icons.Default.ChatBubble, contentDescription = "Chat") },
       )
 
@@ -266,10 +258,7 @@ fun RootScreen(viewModel: MainViewModel) {
       )
 
       OverlayIconButton(
-        onClick = {
-          showChatSheet = false
-          showGatewayPanel = true
-        },
+        onClick = { sheet = Sheet.Settings },
         icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
       )
     }
@@ -286,26 +275,23 @@ fun RootScreen(viewModel: MainViewModel) {
     }
   }
 
-  if (showChatSheet) {
+  val currentSheet = sheet
+  if (currentSheet != null) {
     ModalBottomSheet(
-      onDismissRequest = { showChatSheet = false },
+      onDismissRequest = { sheet = null },
       sheetState = sheetState,
     ) {
-      ChatSheet(viewModel = viewModel)
+      when (currentSheet) {
+        Sheet.Chat -> ChatSheet(viewModel = viewModel)
+        Sheet.Settings -> SettingsSheet(viewModel = viewModel)
+      }
     }
   }
+}
 
-  BackHandler(enabled = showGatewayPanel) {
-    showGatewayPanel = false
-  }
-  if (showGatewayPanel) {
-    Popup(alignment = Alignment.TopStart, properties = PopupProperties(focusable = true)) {
-      GatewaySidePanel(
-        viewModel = viewModel,
-        onDismiss = { showGatewayPanel = false },
-      )
-    }
-  }
+private enum class Sheet {
+  Chat,
+  Settings,
 }
 
 @Composable
