@@ -8,6 +8,7 @@
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fetchWithSsrFGuard } from "openclaw/plugin-sdk";
 
 export type Vote = { voter: number; confirmed: boolean; reason: string };
 export type VoteResult = { confirmed: boolean; reason: string; votes?: Vote[] };
@@ -259,7 +260,7 @@ async function callLLM(userPrompt: string): Promise<{ confirmed: boolean; reason
 
     if (llmApi === "anthropic-messages") {
       const endpoint = llmUrl.endsWith("/messages") ? llmUrl : `${llmUrl}/v1/messages`;
-      resp = await fetch(endpoint, {
+      resp = await fetchWithSsrFGuard(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -281,7 +282,7 @@ async function callLLM(userPrompt: string): Promise<{ confirmed: boolean; reason
       const endpoint = llmUrl.endsWith("/chat/completions")
         ? llmUrl
         : `${llmUrl}/v1/chat/completions`;
-      resp = await fetch(endpoint, {
+      resp = await fetchWithSsrFGuard(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
