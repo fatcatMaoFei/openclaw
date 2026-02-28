@@ -23,9 +23,11 @@ function mockFetchError(status = 500) {
 }
 
 function mockFetchTimeout() {
-  return vi.fn().mockImplementation(
-    () => new Promise((_, reject) => setTimeout(() => reject(new Error("aborted")), 50)),
-  );
+  return vi
+    .fn()
+    .mockImplementation(
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error("aborted")), 50)),
+    );
 }
 
 // ── Mock config for initLlm ────────────────────────────────────────

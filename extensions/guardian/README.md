@@ -32,11 +32,11 @@ Execute  confirmed?  ALL 3 confirmed?
 
 ### Two-Tier Blacklist
 
-| Tier | LLM Votes | Latency | When |
-|------|-----------|---------|------|
-| No match | 0 | 0ms | Reading files, fetching URLs, normal operations |
-| Warning | 1 (1/1) | ~1-2s | `sudo`, `rm -r`, `chmod 777`, `eval` |
-| Critical | 3 (3/3) | ~2-4s | `rm -rf /`, `mkfs`, `dd of=/dev/`, reverse shells |
+| Tier     | LLM Votes | Latency | When                                              |
+| -------- | --------- | ------- | ------------------------------------------------- |
+| No match | 0         | 0ms     | Reading files, fetching URLs, normal operations   |
+| Warning  | 1 (1/1)   | ~1-2s   | `sudo`, `rm -r`, `chmod 777`, `eval`              |
+| Critical | 3 (3/3)   | ~2-4s   | `rm -rf /`, `mkfs`, `dd of=/dev/`, reverse shells |
 
 ### What Gets Checked
 
@@ -75,15 +75,15 @@ Guardian inspects three categories:
 
 ### Whitelist (Always Allowed)
 
-| Pattern | Why |
-|---------|-----|
-| `git` operations | Version control is non-destructive |
-| `cat`, `ls`, `grep`, `head`, `tail`, etc. | Read-only commands |
-| `echo`, `printf` (no pipe) | Output only |
-| `node -p` | Print-only evaluation |
-| `mkdir`, `touch` | Creating files/dirs is non-destructive |
-| `tar`, `unzip`, `gzip`, `bzip2`, `xz`, `7z` | Archive operations |
-| `openclaw` CLI | OpenClaw's own commands |
+| Pattern                                     | Why                                    |
+| ------------------------------------------- | -------------------------------------- |
+| `git` operations                            | Version control is non-destructive     |
+| `cat`, `ls`, `grep`, `head`, `tail`, etc.   | Read-only commands                     |
+| `echo`, `printf` (no pipe)                  | Output only                            |
+| `node -p`                                   | Print-only evaluation                  |
+| `mkdir`, `touch`                            | Creating files/dirs is non-destructive |
+| `tar`, `unzip`, `gzip`, `bzip2`, `xz`, `7z` | Archive operations                     |
+| `openclaw` CLI                              | OpenClaw's own commands                |
 
 ### Tool-Level Blacklist
 
@@ -151,11 +151,11 @@ Every blacklist-matched operation is logged to `~/.openclaw/guardian-audit.jsonl
 
 ## Token Cost
 
-| Scenario | % of Operations | Extra Cost |
-|----------|----------------|------------|
-| No match | ~99% | 0 |
-| Warning | ~0.5-1% | ~500 tokens |
-| Critical | <0.5% | ~1500 tokens |
+| Scenario | % of Operations | Extra Cost   |
+| -------- | --------------- | ------------ |
+| No match | ~99%            | 0            |
+| Warning  | ~0.5-1%         | ~500 tokens  |
+| Critical | <0.5%           | ~1500 tokens |
 
 ## Configuration
 
