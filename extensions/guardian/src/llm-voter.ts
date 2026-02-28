@@ -260,46 +260,56 @@ async function callLLM(userPrompt: string): Promise<{ confirmed: boolean; reason
 
     if (llmApi === "anthropic-messages") {
       const endpoint = llmUrl.endsWith("/messages") ? llmUrl : `${llmUrl}/v1/messages`;
-      resp = await fetchWithSsrFGuard(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": llmApiKey,
-          "anthropic-version": "2023-06-01",
-          ...llmHeaders,
+      const result = await fetchWithSsrFGuard({
+        url: endpoint,
+        init: {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": llmApiKey,
+            "anthropic-version": "2023-06-01",
+            ...llmHeaders,
+          },
+          body: JSON.stringify({
+            model: llmModel,
+            max_tokens: LLM_MAX_TOKENS,
+            temperature: 0,
+            system: SYSTEM_PROMPT,
+            messages: [{ role: "user", content: userPrompt }],
+          }),
         },
-        body: JSON.stringify({
-          model: llmModel,
-          max_tokens: LLM_MAX_TOKENS,
-          temperature: 0,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: userPrompt }],
-        }),
         signal: controller.signal,
       });
+      resp = result.response;
+      await result.release();
     } else {
       // OpenAI-compatible (openai-completions, ollama, etc.)
       const endpoint = llmUrl.endsWith("/chat/completions")
         ? llmUrl
         : `${llmUrl}/v1/chat/completions`;
-      resp = await fetchWithSsrFGuard(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${llmApiKey}`,
-          ...llmHeaders,
+      const result = await fetchWithSsrFGuard({
+        url: endpoint,
+        init: {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${llmApiKey}`,
+            ...llmHeaders,
+          },
+          body: JSON.stringify({
+            model: llmModel,
+            max_tokens: LLM_MAX_TOKENS,
+            temperature: 0,
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: userPrompt },
+            ],
+          }),
         },
-        body: JSON.stringify({
-          model: llmModel,
-          max_tokens: LLM_MAX_TOKENS,
-          temperature: 0,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-        }),
         signal: controller.signal,
       });
+      resp = result.response;
+      await result.release();
     }
 
     if (!resp.ok) throw new Error(`LLM HTTP ${resp.status}`);
