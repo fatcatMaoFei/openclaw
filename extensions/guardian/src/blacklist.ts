@@ -271,13 +271,18 @@ const SAFE_EXEC: RegExp[] = [
 function isQuotedOrCommented(text: string, matchIndex: number): boolean {
   const before = text.slice(0, matchIndex);
 
-  // Inside double quotes?
-  const doubleQuotes = (before.match(/"/g) || []).length;
-  if (doubleQuotes % 2 === 1) return true;
-
-  // Inside single quotes?
-  const singleQuotes = (before.match(/'/g) || []).length;
-  if (singleQuotes % 2 === 1) return true;
+  // Count unescaped quotes (backslash-escaped quotes don't toggle state)
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] === "\\" && i + 1 < before.length && !inSingle) {
+      i++; // skip escaped char
+      continue;
+    }
+    if (before[i] === "'" && !inDouble) inSingle = !inSingle;
+    else if (before[i] === '"' && !inSingle) inDouble = !inDouble;
+  }
+  if (inSingle || inDouble) return true;
 
   // After a comment character on the same line?
   const lastNewline = before.lastIndexOf("\n");
@@ -318,6 +323,17 @@ function normalizeCommand(cmd: string): string {
   let inDouble = false;
   for (let i = 0; i < cmd.length; i++) {
     const ch = cmd[i];
+    // Backslash escape: skip next character (don't toggle quote state)
+    if (ch === "\\" && i + 1 < cmd.length) {
+      if (!inSingle && !inDouble && cmd[i + 1] === "n") {
+        result += "\n";
+        i++;
+        continue;
+      }
+      result += ch + cmd[i + 1];
+      i++;
+      continue;
+    }
     if (ch === "'" && !inDouble) {
       inSingle = !inSingle;
       result += ch;
@@ -326,11 +342,6 @@ function normalizeCommand(cmd: string): string {
     if (ch === '"' && !inSingle) {
       inDouble = !inDouble;
       result += ch;
-      continue;
-    }
-    if (!inSingle && !inDouble && ch === "\\" && cmd[i + 1] === "n") {
-      result += "\n";
-      i++; // skip 'n'
       continue;
     }
     result += ch;
@@ -347,6 +358,12 @@ function splitCommand(cmd: string): string[] {
 
   for (let i = 0; i < cmd.length; i++) {
     const ch = cmd[i];
+    // Backslash escape: skip next character (don't toggle quote state)
+    if (ch === "\\" && i + 1 < cmd.length && !inSingle) {
+      current += ch + cmd[i + 1];
+      i++;
+      continue;
+    }
     if (ch === "'" && !inDouble) {
       inSingle = !inSingle;
       current += ch;
@@ -363,6 +380,13 @@ function splitCommand(cmd: string): string[] {
         segments.push(current.trim());
         current = "";
         i++; // skip second char
+        continue;
+      }
+      // Single & (backgrounding operator) is also a command separator
+      // But >& is a redirection operator, not backgrounding
+      if (ch === "&" && cmd[i - 1] !== ">") {
+        segments.push(current.trim());
+        current = "";
         continue;
       }
       // Single-char separators: ; | \n \r
@@ -449,7 +473,12 @@ export function checkExecBlacklist(command: string): BlacklistMatch | null {
   const segments = splitCommand(normalized);
   for (const seg of segments) {
     // Whitelist check: safe commands skip blacklist entirely
-    if (SAFE_EXEC.some((re) => re.test(seg))) continue;
+    // But if the command contains command substitution ($(...) or backticks), don't skip
+    if (SAFE_EXEC.some((re) => re.test(seg))) {
+      if (/\$\(|\`/.test(seg)) {
+        /* fall through to blacklist check */
+      } else continue;
+    }
 
     const m =
       matchRules(seg, CRITICAL_EXEC, "critical") ?? matchRules(seg, WARNING_EXEC, "warning");
@@ -522,7 +551,16 @@ export function checkToolBlacklist(
   if (!params || Object.keys(params).length === 0) return null;
 
   // Only check action-like fields for all rules
-  const actionFields = ["action", "method", "command", "operation"];
+  const actionFields = [
+    "action",
+    "method",
+    "command",
+    "operation",
+    "script",
+    "query",
+    "code",
+    "sql",
+  ];
   const actionValue = actionFields
     .map((f) => (typeof params[f] === "string" ? (params[f] as string) : ""))
     .filter(Boolean)

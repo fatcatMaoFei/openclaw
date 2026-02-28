@@ -9,22 +9,23 @@
  *     → LLM down → critical: block, warning: ask user
  */
 
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, dirname, resolve, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 
 function canonicalizePath(raw: string): string {
   if (!raw) return raw;
   // Expand ~ to home dir
-  if (raw.startsWith("~/")) raw = raw.replace("~", process.env.HOME ?? "/root");
+  if (raw.startsWith("~/")) raw = raw.replace("~", homedir());
   // Resolve to absolute + normalize (removes ../ etc)
   return normalize(resolve(raw));
 }
 
+import { initAuditLog, writeAuditEntry } from "./src/audit-log.js";
 import { checkExecBlacklist, checkPathBlacklist, checkToolBlacklist } from "./src/blacklist.js";
 import { initLlm, singleVote, multiVote } from "./src/llm-voter.js";
-import { initAuditLog, writeAuditEntry } from "./src/audit-log.js";
 
 function loadEnabled(): boolean {
   try {
